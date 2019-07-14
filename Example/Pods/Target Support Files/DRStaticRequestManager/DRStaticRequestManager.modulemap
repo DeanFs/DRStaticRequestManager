@@ -1,0 +1,6 @@
+framework module DRStaticRequestManager {
+  umbrella header "DRStaticRequestManager-umbrella.h"
+
+  export *
+  module * { export * }
+}

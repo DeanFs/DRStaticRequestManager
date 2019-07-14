@@ -1,0 +1,16 @@
+PODS:
+  - DRStaticRequestManager (0.1.0)
+
+DEPENDENCIES:
+  - DRStaticRequestManager (from `../`)
+
+EXTERNAL SOURCES:
+  DRStaticRequestManager:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  DRStaticRequestManager: 9ac3bd862b4e6a577cad4a27362f0511b675203c
+
+PODFILE CHECKSUM: 0a2013c094b3d527cb627a34c5240d72976b2299
+
+COCOAPODS: 1.7.0.rc.1
