@@ -10,6 +10,9 @@
 #endif
 #endif
 
+#import "DRStaticRequestCache.h"
+#import "DRStaticRequestManager.h"
+#import "DRStaticRequestProtocol.h"
 
 FOUNDATION_EXPORT double DRStaticRequestManagerVersionNumber;
 FOUNDATION_EXPORT const unsigned char DRStaticRequestManagerVersionString[];

@@ -1,16 +1,81 @@
 PODS:
-  - DRStaticRequestManager (0.1.0)
+  - AFNetworking (3.2.1):
+    - AFNetworking/NSURLSession (= 3.2.1)
+    - AFNetworking/Reachability (= 3.2.1)
+    - AFNetworking/Security (= 3.2.1)
+    - AFNetworking/Serialization (= 3.2.1)
+    - AFNetworking/UIKit (= 3.2.1)
+  - AFNetworking/NSURLSession (3.2.1):
+    - AFNetworking/Reachability
+    - AFNetworking/Security
+    - AFNetworking/Serialization
+  - AFNetworking/Reachability (3.2.1)
+  - AFNetworking/Security (3.2.1)
+  - AFNetworking/Serialization (3.2.1)
+  - AFNetworking/UIKit (3.2.1):
+    - AFNetworking/NSURLSession
+  - BlocksKit (2.2.5):
+    - BlocksKit/All (= 2.2.5)
+  - BlocksKit/All (2.2.5):
+    - BlocksKit/Core
+    - BlocksKit/DynamicDelegate
+    - BlocksKit/MessageUI
+    - BlocksKit/UIKit
+  - BlocksKit/Core (2.2.5)
+  - BlocksKit/DynamicDelegate (2.2.5)
+  - BlocksKit/MessageUI (2.2.5):
+    - BlocksKit/Core
+    - BlocksKit/DynamicDelegate
+  - BlocksKit/UIKit (2.2.5):
+    - BlocksKit/Core
+    - BlocksKit/DynamicDelegate
+  - DRCategories (0.1.0):
+    - DRInputLimitManager
+    - DRSandboxManager
+    - pop
+  - DRInputLimitManager (0.1.0):
+    - BlocksKit
+    - DRMacroDefines
+  - DRMacroDefines (0.1.0)
+  - DRSandboxManager (0.1.0)
+  - DRStaticRequestManager (0.1.0):
+    - AFNetworking
+    - DRCategories
+    - DRMacroDefines
+    - DRSandboxManager
+    - YYModel
+  - pop (1.0.12)
+  - YYModel (1.0.4)
 
 DEPENDENCIES:
   - DRStaticRequestManager (from `../`)
+
+SPEC REPOS:
+  https://github.com/cocoapods/specs.git:
+    - AFNetworking
+    - BlocksKit
+    - DRCategories
+    - DRInputLimitManager
+    - DRMacroDefines
+    - DRSandboxManager
+    - pop
+    - YYModel
 
 EXTERNAL SOURCES:
   DRStaticRequestManager:
     :path: "../"
 
 SPEC CHECKSUMS:
-  DRStaticRequestManager: 9ac3bd862b4e6a577cad4a27362f0511b675203c
+  AFNetworking: b6f891fdfaed196b46c7a83cf209e09697b94057
+  BlocksKit: 7f422b971407001178d181a43b99014ea2591fe6
+  DRCategories: 32040a6700fb426fda23fe381f8dae80fad78b10
+  DRInputLimitManager: eb8195c0494e964ff5c18b78bf4af2ed6488be0c
+  DRMacroDefines: b42c82f55db6d146e4f60c4309a7c8f6969577e6
+  DRSandboxManager: 2a48ca41b22edfc39dd2f66abd5a99e777410c61
+  DRStaticRequestManager: 33d1055e4b10726aa9205827ca43c7f6d4ef075a
+  pop: d582054913807fd11fd50bfe6a539d91c7e1a55a
+  YYModel: 2a7fdd96aaa4b86a824e26d0c517de8928c04b30
 
 PODFILE CHECKSUM: 0a2013c094b3d527cb627a34c5240d72976b2299
 
-COCOAPODS: 1.7.0.rc.1
+COCOAPODS: 1.6.1
