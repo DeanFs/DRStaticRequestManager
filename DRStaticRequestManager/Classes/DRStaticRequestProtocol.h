@@ -27,13 +27,24 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  将请求数据打包成对应的数据模型
  
- @param resulet 网络请求的有效数据
+ @param resulet 网络请求的或者缓存的有效数据
+ @param params 请求参数，可能根据参数的不同，打包成不同的数据模型
  @return 打包后的模型数据
  */
-- (id)packageToModel:(id)resulet;
++ (id)packageToModel:(id)resulet params:(id)params;
 
 #pragma mark - 非必须实现的方法
 @optional
+/**
+ 校验数据个数
+ 使用场景：同一个接口，参数不变的情况下，后台返回的数据结构发生了变更
+ 需要通过该方法过滤掉本地返回的老的数据结构数据
+ 
+ @param result 请求结果或者本地缓存
+ @return YES: 没有变更  NO: 有变更
+ */
++ (BOOL)checkDataFomat:(id)result params:(id)params;
+
 /**
  本地json二进制文件内容
  如果没有实现该方法，会尝试用类名读取mainBundle内 className.json
@@ -43,22 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param params 请求参数
  @return 二进制json数据
  */
-- (NSData *)localJsonDataFromParams:(id)params;
-
-/**
- 校验数据个数
- 使用场景：同一个接口，参数不变的情况下，后台返回的数据结构发生了变更
-         需要通过该方法过滤掉本地返回的老的数据结构数据
- 
- @param result 请求结果或者本地缓存
- @return YES: 没有变更  NO: 有变更
- */
-- (BOOL)checkDataFomat:(id)result;
-
-/**
- 取消请求
- */
-- (void)cancel;
++ (NSData *)localJsonDataFromParams:(id)params;
 
 /**
  设置缓存相对路径
@@ -67,7 +63,12 @@ NS_ASSUME_NONNULL_BEGIN
  @param params 请求参数
  @return 缓存key
  */
-- (NSString *)cacheKeyFromParams:(id)params;
++ (NSString *)cacheKeyFromParams:(id)params;
+
+/**
+ 取消请求
+ */
+- (void)cancel;
 
 @end
 

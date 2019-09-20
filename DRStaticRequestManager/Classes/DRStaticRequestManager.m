@@ -10,7 +10,6 @@
 #import <DRMacroDefines/DRMacroDefines.h>
 #import <DRCategories/NSDictionary+DRExtension.h>
 #import <AFNetworking/AFNetworkReachabilityManager.h>
-#import <YYModel/YYModel.h>
 #import "DRStaticRequestCache.h"
 
 @implementation DRStaticRequestTaskModel
@@ -34,7 +33,6 @@
 @property (nonatomic, strong) NSMutableArray<DRStaticRequestTaskModel *> *needLoginTasks;
 @property (nonatomic, strong) NSMutableArray<DRStaticRequestTaskModel *> *allTask;
 @property (nonatomic, strong) NSMutableDictionary *failedTasks; // 失败了的请求任务，恢复网络时重试
-@property (nonatomic, strong) NSCache *staticDataCache; // 请求后模型化的缓存数据
 @property (nonatomic, assign) BOOL isLogined; // 标记已登录
 
 @property (nonatomic, assign) BOOL isReachableLastTime; // 标记网络由不畅通到畅通的变更
@@ -55,7 +53,6 @@
 
 - (instancetype)init {
     if (self = [super init]) {
-        _staticDataCache = [[NSCache alloc] init];
         _failedTasks = [NSMutableDictionary dictionary];
         _allTask = [NSMutableArray array];
         _needLoginTasks = [NSMutableArray array];
@@ -101,75 +98,28 @@
 // 请求数据并缓存
 - (id<DRStaticRequestProtocol>)doRequestWithRequestTask:(DRStaticRequestTaskModel *)task
                                               doneBlock:(dispatch_block_t)doneBlock {
-    kDRWeakSelf
-    NSString *cachePath = [DRStaticRequestManager makeCachePathWithRequestTask:task];
-    
+    NSString *cacheKey = [DRStaticRequestCache makeCacheKeyWithRequestClass:task.requestClass
+                                                                     params:task.params];
     id<DRStaticRequestProtocol> staticRequest = [(Class)task.requestClass new];
     if (![staticRequest respondsToSelector:@selector(getDataWithParams:successBlock:failureBlock:)]) {
+        NSString *message = [NSString stringWithFormat:@"%@请求类未遵循DRStaticRequestProtocol协议，实现getDataWithParams:successBlock:failureBlock:方法", NSStringFromClass(task.requestClass)];
+        NSAssert(NO, message);
         return nil;
     }
     [staticRequest getDataWithParams:task.params successBlock:^(id  _Nonnull requestResult, id<DRStaticRequestProtocol>  _Nonnull request) {
-        @try {
-            // 实例化请求结果
-            if ([request respondsToSelector:@selector(packageToModel:)]) {
-                id modelData = [request packageToModel:requestResult];
-                if (modelData && ![modelData isKindOfClass:[NSNull class]]) {
-                    [weakSelf.staticDataCache setObject:modelData forKey:cachePath];
-                } else {
-                    NSString *message = [NSString stringWithFormat:@"接【口%@】请求异常，没有返回数据", cachePath];
-                    NSAssert(NO, message);
-                }
-            }
-            // 缓存请求结果
-            [DRStaticRequestCache cacheStaticRequestData:[requestResult yy_modelToJSONData] forKey:cachePath];
-        } @catch (NSException *exception) {
-            kDR_LOG(@"%@", exception);
-        }
-        [weakSelf.failedTasks removeObjectForKey:cachePath];
+        // 更新缓存
+        [DRStaticRequestCache cacheStaticRequestResult:requestResult withRequestClass:task.requestClass params:task.params];
+        // 移除请求任务失败记录
+        [self.failedTasks removeObjectForKey:cacheKey];
+        // 执行完成回调
         kDR_SAFE_BLOCK(doneBlock);
     } failureBlock:^(id<DRStaticRequestProtocol>  _Nonnull request) {
-        // 先读缓存
-        NSData *jsonData = [DRStaticRequestCache getStaticRequestDataCacheForKey:cachePath];
-        id result = [self jsonResultFromJsonData:jsonData withStaticRequest:staticRequest];
-        if (!result) {
-            // 没有缓存则读本地json
-            if ([staticRequest respondsToSelector:@selector(localJsonDataFromParams:)]) {
-                jsonData = [staticRequest localJsonDataFromParams:task.params];
-            } else {
-                // 默认json文件，于请求类同名
-                NSString *jsonPath = [[NSBundle mainBundle] pathForResource:NSStringFromClass(task.requestClass) ofType:@"json"];
-                jsonData = [NSData dataWithContentsOfFile:jsonPath];
-            }
-            if (jsonData) {
-                result = [self jsonResultFromJsonData:jsonData withStaticRequest:staticRequest];
-            }
-        }
-        
-        if (result && [request respondsToSelector:@selector(packageToModel:)]) {
-            id modelData = [request packageToModel:result];
-            if (!modelData) {
-                NSString *message = [NSString stringWithFormat:@"接【口%@】请求异常，没有返回数据，请添加本地json文件", cachePath];
-                NSAssert(NO, message);
-            }
-        }
+        // 添加请求任务失败记录
+        [self.failedTasks safeSetObject:task forKey:cacheKey];
+        // 执行完成回调
         kDR_SAFE_BLOCK(doneBlock);
-        [weakSelf.failedTasks safeSetObject:task forKey:cachePath];
     }];
     return staticRequest;
-}
-
-- (id)jsonResultFromJsonData:(NSData *)jsonData
-           withStaticRequest:(id<DRStaticRequestProtocol>)staticRequest {
-    id result;
-    if (jsonData) {
-        result = [NSJSONSerialization JSONObjectWithData:jsonData options:kNilOptions error:NULL];
-        if ([staticRequest respondsToSelector:@selector(checkDataFomat:)]) {
-            if (![staticRequest checkDataFomat:result]) {
-                result = nil;
-            }
-        }
-    }
-    return result;
 }
 
 - (void)doBatchRequests:(NSArray<DRStaticRequestTaskModel *> *)tasks {
@@ -179,24 +129,6 @@
         }
         [self doRequestWithRequestTask:task doneBlock:nil];
     }
-}
-
-+ (NSString *)makeCachePathWithRequestTask:(DRStaticRequestTaskModel *)task {
-    id<DRStaticRequestProtocol> staticRequest = [(Class)task.requestClass new];
-    if ([staticRequest respondsToSelector:@selector(cacheKeyFromParams:)]) {
-        return [staticRequest cacheKeyFromParams:task.params];
-    }
-    NSString *cachePath = NSStringFromClass(task.requestClass);
-    if (task.params) {
-        if ([task.params isKindOfClass:[NSString class]] ||
-            [task.params isKindOfClass:[NSNumber class]]) {
-            cachePath = [NSString stringWithFormat:@"%@_%@", cachePath, task.params];
-        } else {
-            NSString *paramString = [task.params yy_modelToJSONString];
-            cachePath = [NSString stringWithFormat:@"%@_%@", cachePath, paramString];
-        }
-    }
-    return cachePath;
 }
 
 // 登录，退出登录消息监听
@@ -247,7 +179,7 @@
 
 /**
  获取指定静态接口的数据
- 优先读缓存，并执行一次更新
+ 优先读缓存，并执行一次更新，若更新后发现与缓存不一致，会再次掉回调
  
  @param requestClass 接口请求类
  @param params 请求参数
@@ -257,21 +189,24 @@
 + (id<DRStaticRequestProtocol>)getStaticDataWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass
                                                       params:(id)params
                                                    doneBlock:(void(^)(id staticData))doneBlock {
+    id cacheData = [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
+                                                                             params:params];
+    if (cacheData != nil) {
+        kDR_SAFE_BLOCK(doneBlock, cacheData);
+    }
+    
     DRStaticRequestTaskModel *task = [DRStaticRequestTaskModel new];
     task.requestClass = requestClass;
     task.params = params;
     
-    NSString *cachePath = [DRStaticRequestManager makeCachePathWithRequestTask:task];
     DRStaticRequestManager *manager = [DRStaticRequestManager sharedInstance];
-    
-    id data = [manager.staticDataCache objectForKey:cachePath];
-    if (data) {
-        kDR_SAFE_BLOCK(doneBlock, data);
-        [manager doRequestWithRequestTask:task doneBlock:nil];
-        return nil;
-    }
     return [manager doRequestWithRequestTask:task doneBlock:^{
-        kDR_SAFE_BLOCK(doneBlock, [manager.staticDataCache objectForKey:cachePath]);
+        id resaultData = [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
+                                                                                  params:params];
+        if (![DRStaticRequestCache isResultDate:resaultData equalToCacheData:cacheData]) {
+            // 请求后缓存有变更，则再次调用完成回调
+            kDR_SAFE_BLOCK(doneBlock, resaultData);
+        }
     }];
 }
 
@@ -290,10 +225,10 @@
     task.requestClass = requestClass;
     task.params = params;
     
-    NSString *cachePath = [DRStaticRequestManager makeCachePathWithRequestTask:task];
     DRStaticRequestManager *manager = [DRStaticRequestManager sharedInstance];
     return [manager doRequestWithRequestTask:task doneBlock:^{
-        kDR_SAFE_BLOCK(doneBlock, [manager.staticDataCache objectForKey:cachePath]);
+        kDR_SAFE_BLOCK(doneBlock, [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
+                                                                                           params:params]);
     }];
 }
 
@@ -306,41 +241,12 @@
  */
 + (id)getStaticCacheDataWithClass:(Class<DRStaticRequestProtocol>)requestClass
                            params:(id)params {
-    DRStaticRequestTaskModel *task = [DRStaticRequestTaskModel new];
-    task.requestClass = requestClass;
-    task.params = params;
-    
-    NSString *cachePath = [DRStaticRequestManager makeCachePathWithRequestTask:task];
-    DRStaticRequestManager *manager = [DRStaticRequestManager sharedInstance];
-    id cacheData = [manager.staticDataCache objectForKey:cachePath];
-    if (!cacheData) {
-        id<DRStaticRequestProtocol> staticRequest = [(Class)task.requestClass new];
-        // 先读缓存
-        NSData *jsonData = [DRStaticRequestCache getStaticRequestDataCacheForKey:cachePath];
-        id result = [manager jsonResultFromJsonData:jsonData withStaticRequest:staticRequest];
-        if (!result) {
-            // 没有缓存则读本地json
-            if ([staticRequest respondsToSelector:@selector(localJsonDataFromParams:)]) {
-                jsonData = [staticRequest localJsonDataFromParams:task.params];
-            } else {
-                // 默认json文件，于请求类同名
-                NSString *jsonPath = [[NSBundle mainBundle] pathForResource:NSStringFromClass(task.requestClass) ofType:@"json"];
-                jsonData = [NSData dataWithContentsOfFile:jsonPath];
-            }
-            if (jsonData) {
-                result = [manager jsonResultFromJsonData:jsonData withStaticRequest:staticRequest];
-            }
-        }
-        
-        if (result && [staticRequest respondsToSelector:@selector(packageToModel:)]) {
-            cacheData = [staticRequest packageToModel:result];
-        }
-    }
-    return cacheData;
+    return [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass params:params];
 }
 
 /**
  取消一个请求
+ 需要requestTask实现DRStaticRequestProtocol协议的cancel方法
  
  @param requestTask 要取消的请求
  */

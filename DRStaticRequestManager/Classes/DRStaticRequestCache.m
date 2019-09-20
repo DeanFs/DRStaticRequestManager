@@ -7,6 +7,7 @@
 
 #import "DRStaticRequestCache.h"
 #import <DRSandboxManager/DRSandboxManager.h>
+#import <YYModel/YYModel.h>
 
 @implementation DRStaticRequestCache
 
@@ -23,15 +24,84 @@
     return cachePath;
 }
 
-+ (NSData *)getStaticRequestDataCacheForKey:(NSString *)key {
-    return [NSData dataWithContentsOfFile:[self staticRequestCacheFilePathWithKey:key]];;
++ (id)getStaticRequestDataCacheWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass
+                                         params:(id)params {
+    if (![requestClass respondsToSelector:@selector(packageToModel:params:)]) {
+        NSString *message = [NSString stringWithFormat:@"%@请求类未遵循DRStaticRequestProtocol协议，实现packageToModel:params:方法", NSStringFromClass(requestClass)];
+        NSAssert(NO, message);
+        return nil;
+    }
+    
+    NSString *key = [self makeCacheKeyWithRequestClass:requestClass params:params];
+    // 先读沙盒缓存
+    NSData *data = [NSData dataWithContentsOfFile:[self staticRequestCacheFilePathWithKey:key]];
+    if (data == nil) {
+        // 没有缓存则读本地json
+        if ([requestClass respondsToSelector:@selector(localJsonDataFromParams:)]) {
+            data = [requestClass localJsonDataFromParams:params];
+        } else {
+            // 默认json文件，于请求类同名
+            NSString *jsonPath = [[NSBundle mainBundle] pathForResource:NSStringFromClass(requestClass)
+                                                                 ofType:@"json"];
+            data = [NSData dataWithContentsOfFile:jsonPath];
+        }
+    }
+    if (data != nil) {
+        id result = [self jsonResultFromJsonData:data
+                                withRequestClass:requestClass
+                                          params:params];
+        if (result != nil) {
+            return [requestClass packageToModel:result params:params];
+        }
+    }
+    return nil;
 }
 
-+ (void)cacheStaticRequestData:(NSData *)data forKey:(NSString *)key {
-    if (data) {
++ (void)cacheStaticRequestResult:(id)requestResult
+                withRequestClass:(Class<DRStaticRequestProtocol>)requestClass
+                          params:(id)params {
+    if (requestResult != nil) {
+        NSString *key = [self makeCacheKeyWithRequestClass:requestClass params:params];
+        NSData *data = [requestResult yy_modelToJSONData];
         [data writeToFile:[self staticRequestCacheFilePathWithKey:key]
                atomically:YES];
     }
+}
+
++ (id)jsonResultFromJsonData:(NSData *)jsonData
+            withRequestClass:(Class<DRStaticRequestProtocol>)requestClass
+                      params:(id)params {
+    id result;
+    if (jsonData != nil) {
+        result = [NSJSONSerialization JSONObjectWithData:jsonData options:kNilOptions error:NULL];
+        if ([requestClass respondsToSelector:@selector(checkDataFomat:params:)]) {
+            if (![requestClass checkDataFomat:result params:params]) {
+                result = nil;
+            }
+        }
+    }
+    return result;
+}
+
++ (NSString *)makeCacheKeyWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass params:(id)params {
+    if ([requestClass respondsToSelector:@selector(cacheKeyFromParams:)]) {
+        return [requestClass cacheKeyFromParams:params];
+    }
+    NSString *cachePath = NSStringFromClass(requestClass);
+    if (params) {
+        if ([params isKindOfClass:[NSString class]] ||
+            [params isKindOfClass:[NSNumber class]]) {
+            cachePath = [NSString stringWithFormat:@"%@_%@", cachePath, params];
+        } else {
+            NSString *paramString = [params yy_modelToJSONString];
+            cachePath = [NSString stringWithFormat:@"%@_%@", cachePath, paramString];
+        }
+    }
+    return cachePath;
+}
+
++ (BOOL)isResultDate:(id)resultDate equalToCacheData:(id)cacheData {
+    return [[resultDate yy_modelToJSONData] isEqualToData:[cacheData yy_modelToJSONData]];
 }
 
 @end

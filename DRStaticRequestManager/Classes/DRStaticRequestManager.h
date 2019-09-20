@@ -42,7 +42,7 @@
 
 /**
  获取指定静态接口的数据
- 优先读缓存，并执行一次更新
+ 优先读缓存，并执行一次更新，若更新后发现与缓存不一致，会再次掉回调
  
  @param requestClass 接口请求类
  @param params 请求参数
@@ -77,6 +77,7 @@
 
 /**
  取消一个请求
+ 需要requestTask实现DRStaticRequestProtocol协议的cancel方法
 
  @param requestTask 要取消的请求
  */
