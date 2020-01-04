@@ -76,6 +76,16 @@
                            params:(id)params;
 
 /**
+ 直接拿缓存数据，只做json解析，不实例化成数据模型
+ 
+ @param requestClass 请求类
+ @param params 请求参数
+ @return 当前缓存的jsonObject数据
+ */
++ (id)getStaticCacheJsonObjectWithClass:(Class<DRStaticRequestProtocol>)requestClass
+                                 params:(id)params;
+
+/**
  取消一个请求
  需要requestTask实现DRStaticRequestProtocol协议的cancel方法
 

@@ -15,6 +15,16 @@ NS_ASSUME_NONNULL_BEGIN
 // 返回接口对应的数据模型数据
 + (id)getStaticRequestDataCacheWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass
                                          params:(id)params;
+/**
+ 直接拿缓存数据，只做json解析，不实例化成数据模型
+ 
+ @param requestClass 请求类
+ @param params 请求参数
+ @return 当前缓存的jsonObject数据
+ */
++ (id)getStaticCacheJsonObjectWithClass:(Class<DRStaticRequestProtocol>)requestClass
+                                 params:(id)params;
+
 // 缓存接口请求结果
 + (void)cacheStaticRequestResult:(id)requestResult
                 withRequestClass:(Class<DRStaticRequestProtocol>)requestClass

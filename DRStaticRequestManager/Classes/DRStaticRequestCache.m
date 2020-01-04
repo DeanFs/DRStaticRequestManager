@@ -32,11 +32,27 @@
         return nil;
     }
     
+    id jsonObject = [self getStaticCacheJsonObjectWithClass:requestClass params:params];
+    if (jsonObject != nil) {
+        return [requestClass packageToModel:jsonObject params:params];
+    }
+    return nil;
+}
+
+/**
+ 直接拿缓存数据，只做json解析，不实例化成数据模型
+ 
+ @param requestClass 请求类
+ @param params 请求参数
+ @return 当前缓存的jsonObject数据
+ */
++ (id)getStaticCacheJsonObjectWithClass:(Class<DRStaticRequestProtocol>)requestClass
+                                 params:(id)params {
     NSString *key = [self makeCacheKeyWithRequestClass:requestClass params:params];
     // 先读沙盒缓存
     NSData *data = [NSData dataWithContentsOfFile:[self staticRequestCacheFilePathWithKey:key]];
     if (data == nil) {
-        // 没有缓存则读本地json
+        // 没有缓存则尝试读本地json
         if ([requestClass respondsToSelector:@selector(localJsonDataFromParams:)]) {
             data = [requestClass localJsonDataFromParams:params];
         } else {
@@ -47,12 +63,9 @@
         }
     }
     if (data != nil) {
-        id result = [self jsonResultFromJsonData:data
-                                withRequestClass:requestClass
-                                          params:params];
-        if (result != nil) {
-            return [requestClass packageToModel:result params:params];
-        }
+        return [self jsonResultFromJsonData:data
+                           withRequestClass:requestClass
+                                     params:params];
     }
     return nil;
 }
