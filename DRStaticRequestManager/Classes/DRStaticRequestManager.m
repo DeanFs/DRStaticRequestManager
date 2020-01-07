@@ -31,7 +31,8 @@
 @interface DRStaticRequestManager ()
 
 @property (nonatomic, strong) NSMutableArray<DRStaticRequestTaskModel *> *needLoginTasks;
-@property (nonatomic, strong) NSMutableArray<DRStaticRequestTaskModel *> *allTask;
+@property (nonatomic, strong) NSMutableArray<DRStaticRequestTaskModel *> *allTask; // 需要每次在从后台进入前台时请求的
+@property (strong, nonatomic) NSArray<DRStaticRequestTaskModel *> *allRequstTasks; // 全部请求，包含仅启动时调用一次的请求
 @property (nonatomic, strong) NSMutableDictionary *failedTasks; // 失败了的请求任务，恢复网络时重试
 @property (nonatomic, assign) BOOL isLogined; // 标记已登录
 
@@ -58,7 +59,7 @@
         _needLoginTasks = [NSMutableArray array];
         _isReachableLastTime = YES;
         
-        KDR_ADD_OBSERVER(UIApplicationWillEnterForegroundNotification, @selector(onApplicationWillEnterForeground))
+        KDR_ADD_OBSERVER(UIApplicationDidBecomeActiveNotification, @selector(onAppBecomeActive))
         KDR_ADD_OBSERVER(AFNetworkingReachabilityDidChangeNotification, @selector(appNetworkChangedNotification:))
     }
     return self;
@@ -69,8 +70,13 @@
 }
 
 #pragma mark - notice
-- (void)onApplicationWillEnterForeground {
-    [self doBatchRequests:self.allTask];
+- (void)onAppBecomeActive {
+    if (self.allRequstTasks.count > 0) {
+        [self doBatchRequests:self.allRequstTasks];
+        self.allRequstTasks = nil;
+    } else {
+        [self doBatchRequests:self.allTask];
+    }
 }
 
 - (void)whenUserLogin {
@@ -173,8 +179,7 @@
     [manager addLoginObserver:loginMessageName
                logoutObserver:logoutMessageName];
     
-    // 执行全部请求
-    [manager doBatchRequests:allRequstTasks];
+    manager.allRequstTasks = allRequstTasks;
 }
 
 /**
