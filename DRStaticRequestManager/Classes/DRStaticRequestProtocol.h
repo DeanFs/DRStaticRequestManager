@@ -33,6 +33,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (id)packageToModel:(id)resulet params:(id)params;
 
+/// 获取错误信息字段内容
+- (NSString *)errorMessage;
+
 #pragma mark - 非必须实现的方法
 @optional
 /**

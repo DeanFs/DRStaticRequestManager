@@ -1,0 +1,6 @@
+framework module DRSandboxManager {
+  umbrella header "DRSandboxManager-umbrella.h"
+
+  export *
+  module * { export * }
+}

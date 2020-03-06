@@ -103,7 +103,7 @@
 #pragma mark - private
 // 请求数据并缓存
 - (id<DRStaticRequestProtocol>)doRequestWithRequestTask:(DRStaticRequestTaskModel *)task
-                                              doneBlock:(dispatch_block_t)doneBlock {
+                                              doneBlock:(void(^)(BOOL success, NSString *errorMessage))doneBlock {
     NSString *cacheKey = [DRStaticRequestCache makeCacheKeyWithRequestClass:task.requestClass
                                                                      params:task.params];
     id<DRStaticRequestProtocol> staticRequest = [(Class)task.requestClass new];
@@ -118,12 +118,16 @@
         // 移除请求任务失败记录
         [self.failedTasks removeObjectForKey:cacheKey];
         // 执行完成回调
-        kDR_SAFE_BLOCK(doneBlock);
+        kDR_SAFE_BLOCK(doneBlock, YES, nil);
     } failureBlock:^(id<DRStaticRequestProtocol>  _Nonnull request) {
         // 添加请求任务失败记录
         [self.failedTasks safeSetObject:task forKey:cacheKey];
         // 执行完成回调
-        kDR_SAFE_BLOCK(doneBlock);
+        NSString *errorMessage = @"";
+        if ([request respondsToSelector:@selector(errorMessage)]) {
+            errorMessage = [request errorMessage];
+        }
+        kDR_SAFE_BLOCK(doneBlock, NO, errorMessage);
     }];
     return staticRequest;
 }
@@ -193,11 +197,11 @@
  */
 + (id<DRStaticRequestProtocol>)getStaticDataWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass
                                                       params:(id)params
-                                                   doneBlock:(void(^)(id staticData))doneBlock {
+                                                   doneBlock:(DRStaticRequestDoneBlock)doneBlock {
     id cacheData = [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
                                                                              params:params];
     if (cacheData != nil) {
-        kDR_SAFE_BLOCK(doneBlock, cacheData);
+        kDR_SAFE_BLOCK(doneBlock, YES, cacheData, nil);
     }
     
     DRStaticRequestTaskModel *task = [DRStaticRequestTaskModel new];
@@ -205,12 +209,16 @@
     task.params = params;
     
     DRStaticRequestManager *manager = [DRStaticRequestManager sharedInstance];
-    return [manager doRequestWithRequestTask:task doneBlock:^{
-        id resaultData = [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
-                                                                                  params:params];
-        if (![DRStaticRequestCache isResultDate:resaultData equalToCacheData:cacheData]) {
-            // 请求后缓存有变更，则再次调用完成回调
-            kDR_SAFE_BLOCK(doneBlock, resaultData);
+    return [manager doRequestWithRequestTask:task doneBlock:^(BOOL success, NSString *errorMessage) {
+        if (success) {
+            id resaultData = [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
+                                                                                      params:params];
+            if (![DRStaticRequestCache isResultData:resaultData equalToCacheData:cacheData]) {
+                // 请求后缓存有变更，则再次调用完成回调
+                kDR_SAFE_BLOCK(doneBlock, success, resaultData, errorMessage);
+            }
+        } else {
+            kDR_SAFE_BLOCK(doneBlock, success, nil, errorMessage);
         }
     }];
 }
@@ -225,15 +233,19 @@
  */
 + (id<DRStaticRequestProtocol>)getStaticDataIgnoreCacheWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass
                                                                  params:(id)params
-                                                              doneBlock:(void(^)(id staticData))doneBlock {
+                                                              doneBlock:(DRStaticRequestDoneBlock)doneBlock {
     DRStaticRequestTaskModel *task = [DRStaticRequestTaskModel new];
     task.requestClass = requestClass;
     task.params = params;
     
     DRStaticRequestManager *manager = [DRStaticRequestManager sharedInstance];
-    return [manager doRequestWithRequestTask:task doneBlock:^{
-        kDR_SAFE_BLOCK(doneBlock, [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
-                                                                                           params:params]);
+    return [manager doRequestWithRequestTask:task doneBlock:^(BOOL success, NSString *errorMessage) {
+        id resaultData;
+        if (success) {
+            resaultData = [DRStaticRequestCache getStaticRequestDataCacheWithRequestClass:requestClass
+                                                                                   params:params];
+        }
+        kDR_SAFE_BLOCK(doneBlock, success, resaultData, errorMessage);
     }];
 }
 

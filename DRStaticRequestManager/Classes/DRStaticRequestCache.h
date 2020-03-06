@@ -35,7 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
                                     params:(id)params;
 
 // 最新结果与旧的缓存比较
-+ (BOOL)isResultDate:(id)resultDate equalToCacheData:(id)cacheData;
++ (BOOL)isResultData:(id)resultDate equalToCacheData:(id)cacheData;
 
 @end
 

@@ -113,8 +113,8 @@
     return cachePath;
 }
 
-+ (BOOL)isResultDate:(id)resultDate equalToCacheData:(id)cacheData {
-    return [[resultDate yy_modelToJSONData] isEqualToData:[cacheData yy_modelToJSONData]];
++ (BOOL)isResultData:(id)resultData equalToCacheData:(id)cacheData {
+    return [[resultData yy_modelToJSONData] isEqualToData:[cacheData yy_modelToJSONData]];
 }
 
 @end

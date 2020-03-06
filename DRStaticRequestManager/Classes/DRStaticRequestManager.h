@@ -9,6 +9,8 @@
 #import <Foundation/Foundation.h>
 #import "DRStaticRequestProtocol.h"
 
+typedef void(^DRStaticRequestDoneBlock)(BOOL success, id staticData, NSString *message);
+
 @interface DRStaticRequestTaskModel : NSObject
 
 @property (nonatomic, strong) Class<DRStaticRequestProtocol> requestClass; // 接口请求类名
@@ -51,7 +53,7 @@
  */
 + (id<DRStaticRequestProtocol>)getStaticDataWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass
                                                       params:(id)params
-                                                   doneBlock:(void(^)(id staticData))doneBlock;
+                                                   doneBlock:(DRStaticRequestDoneBlock)doneBlock;
 
 /**
  获取指定静态接口的数据
@@ -63,7 +65,7 @@
  */
 + (id<DRStaticRequestProtocol>)getStaticDataIgnoreCacheWithRequestClass:(Class<DRStaticRequestProtocol>)requestClass
                                                                  params:(id)params
-                                                              doneBlock:(void(^)(id staticData))doneBlock;
+                                                              doneBlock:(DRStaticRequestDoneBlock)doneBlock;
 
 /**
  直接拿缓存数据

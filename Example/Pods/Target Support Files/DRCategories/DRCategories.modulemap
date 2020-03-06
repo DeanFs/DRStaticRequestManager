@@ -1,0 +1,6 @@
+framework module DRCategories {
+  umbrella header "DRCategories-umbrella.h"
+
+  export *
+  module * { export * }
+}
