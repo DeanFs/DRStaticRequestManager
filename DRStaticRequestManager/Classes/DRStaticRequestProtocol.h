@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)getDataWithParams:(id)params
              successBlock:(void(^)(id requestResult, id<DRStaticRequestProtocol> request))doneBlock
-             failureBlock:(void(^)(id<DRStaticRequestProtocol> request))failureBlock;
+             failureBlock:(void(^)(NSString *errorMessage, id<DRStaticRequestProtocol> request))failureBlock;
 
 /**
  将请求数据打包成对应的数据模型
@@ -32,9 +32,6 @@ NS_ASSUME_NONNULL_BEGIN
  @return 打包后的模型数据
  */
 + (id)packageToModel:(id)resulet params:(id)params;
-
-/// 获取错误信息字段内容
-- (NSString *)errorMessage;
 
 #pragma mark - 非必须实现的方法
 @optional

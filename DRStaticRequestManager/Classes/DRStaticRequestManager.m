@@ -119,14 +119,10 @@
         [self.failedTasks removeObjectForKey:cacheKey];
         // 执行完成回调
         kDR_SAFE_BLOCK(doneBlock, YES, nil);
-    } failureBlock:^(id<DRStaticRequestProtocol>  _Nonnull request) {
+    } failureBlock:^(NSString *errorMessage, id<DRStaticRequestProtocol>  _Nonnull request) {
         // 添加请求任务失败记录
         [self.failedTasks safeSetObject:task forKey:cacheKey];
         // 执行完成回调
-        NSString *errorMessage = @"";
-        if ([request respondsToSelector:@selector(errorMessage)]) {
-            errorMessage = [request errorMessage];
-        }
         kDR_SAFE_BLOCK(doneBlock, NO, errorMessage);
     }];
     return staticRequest;
